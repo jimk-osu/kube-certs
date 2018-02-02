@@ -1,0 +1,28 @@
+{
+  "nodes" : {
+    "workers" : [
+      { "hostname" : "kubeworker3",
+        "externalIP": "",
+        "internalIP": "192.168.56.109"
+      },
+      { "hostname" : "kubeworker4",
+        "externalIP": "",
+        "internalIP": "192.168.56.110"
+      }
+    ],
+    "controllers": [
+      { "hostname" : "kubemaster2",
+        "externalIP": "",
+        "internalIP": "192.168.56.108"
+      }
+    ],
+    "kube-api-addr": "192.168.56.108"
+  },
+  "ca" : {
+    "location": "Columbus",
+    "CN": "Kube-Certs",
+    "ORG": "Acme",
+    "OU": "OGs",
+    "ST": "Ohio"
+  }
+}
