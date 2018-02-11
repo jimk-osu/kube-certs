@@ -26,26 +26,50 @@ import (
 //   node Kubenode[]
 // }
 
-type KubecertConfg struct{
- Nodes struct {
-  Workers []struct {
-    Hostname string'json:"hostname"'
-    ExternalIP string 'json:"externalIP"'
-    InternalIP string 'json:"internalIP"'
-  } `json:"workers"`
-  Controllers []struct {
+// type KubecertConfg struct{
+//  Nodes struct {
+//   Workers []struct {
+//     Hostname string 'json:"hostname"'
+//     ExternalIP string 'json:"externalIP"'
+//     InternalIP string 'json:"internalIP"'
+//   } `json:"workers"`
+//   Controllers []struct {
+//     Hostname string 'json:"hostname"'
+//     ExternalIP string 'json:"externalIP"'
+//     InternalIP string 'json:"internalIP"'
+//   } `json:"controllers"`
+//  } 'json:"nodes"'
+//  CA struct {
+//    location string 'json:"location"'
+//    CN string 'json:"CN"'
+//    ORG string 'json:"ORG"'
+//    OU string 'json:"OU"'
+//    ST string 'json:"ST"'
+//  } 'json:"ca"'
+// }
+
+type Node struct {
     Hostname string 'json:"hostname"'
     ExternalIP string 'json:"externalIP"'
     InternalIP string 'json:"internalIP"'
-  } `json:"controllers"`
- } 'json:"nodes"'
- CA struct {
-   location string 'json:"location"'
-   CN string 'json:"CN"'
-   ORG string 'json:"ORG"'
-   OU string 'json:"OU"'
-   ST string 'json:"ST"'
- } 'json:"ca"'
+  }
+
+type Nodes struct {
+  Workers []Node 'json:"workers"'
+  Controllers []Node 'json: controllers'
+}
+
+type CA struct {
+  location string 'json:"location"'
+  CN string 'json:"CN"'
+  ORG string 'json:"ORG"'
+  OU string 'json:"OU"'
+  ST string 'json:"ST"'
+}
+
+type KubecertConfg struct {
+  nodes Nodes 'json:"nodes"'
+  ca CA 'json:"ca"'
 }
 
 func main(){
