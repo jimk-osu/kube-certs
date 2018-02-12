@@ -11,87 +11,74 @@
 package main
 
 import (
-  //"github.com/cloudflare/cfssl/cmd/cfssl/cfssl"
-  "fmt"
-  "encoding/json"
-  //"errors"
-  "io/ioutil"
-  "os")
+	//"github.com/cloudflare/cfssl/cmd/cfssl/cfssl"
+	"encoding/json"
+	"fmt"
+	"os/exec"
+	//"errors"
+	"io/ioutil"
+	"os"
+)
 
-// type Worker struct {
-//   node Kubenode[]
-// }
-//
-// type Controller struct {
-//   node Kubenode[]
-// }
-
-// type KubecertConfg struct{
-//  Nodes struct {
-//   Workers []struct {
-//     Hostname string 'json:"hostname"'
-//     ExternalIP string 'json:"externalIP"'
-//     InternalIP string 'json:"internalIP"'
-//   } `json:"workers"`
-//   Controllers []struct {
-//     Hostname string 'json:"hostname"'
-//     ExternalIP string 'json:"externalIP"'
-//     InternalIP string 'json:"internalIP"'
-//   } `json:"controllers"`
-//  } 'json:"nodes"'
-//  CA struct {
-//    location string 'json:"location"'
-//    CN string 'json:"CN"'
-//    ORG string 'json:"ORG"'
-//    OU string 'json:"OU"'
-//    ST string 'json:"ST"'
-//  } 'json:"ca"'
-// }
-
-type Node struct {
-    Hostname string 'json:"hostname"'
-    ExternalIP string 'json:"externalIP"'
-    InternalIP string 'json:"internalIP"'
-  }
-
-type Nodes struct {
-  Workers []Node 'json:"workers"'
-  Controllers []Node 'json: controllers'
+type KubeConfig struct {
+	Node struct {
+		Workers []struct {
+			Hostname   string `json:"hostname"`
+			ExternalIP string `json:"externalIP"`
+			InternalIP string `json:"internalIP"`
+		} `json:"workers"`
+		Controllers []struct {
+			Hostname   string `json:"hostname"`
+			ExternalIP string `json:"externalIP"`
+			InternalIP string `json:"internalIP"`
+		} `json:"controllers"`
+		KubeApiAddr string `json:"kube-api-addr"`
+	} `json:"nodes"`
+	CA struct {
+		Location string `json:"location"`
+		CN       string `json:"CN"`
+		ORG      string `json:"ORG"`
+		OU       string `json:"OU"`
+		ST       string `json:"ST"`
+	} `json:"ca"`
 }
 
-type CA struct {
-  location string 'json:"location"'
-  CN string 'json:"CN"'
-  ORG string 'json:"ORG"'
-  OU string 'json:"OU"'
-  ST string 'json:"ST"'
+func main() {
+	readKubeCertJson()
 }
 
-type KubecertConfg struct {
-  nodes Nodes 'json:"nodes"'
-  ca CA 'json:"ca"'
-}
+func readKubeCertJson() {
+	file, err := ioutil.ReadFile("./kube-cert-config.json")
 
-func main(){
-  readKubeCertJson()
-}
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 
-func readKubeCertJson(){
-  file, err := ioutil.ReadFile("./kube-cert-config.json")
+	fmt.Printf("%s\n", string(file))
 
-  if err != nil {
-        fmt.Println(err.Error())
-        os.Exit(1)
-    }
+	var kubeconfig KubeConfig
+	json.Unmarshal(file, &kubeconfig)
+	fmt.Printf("Results: %v\n", kubeconfig)
 
-    fmt.Printf("%s\n", string(file))
+	// Get Variable assingment working
+	cmd = exec.Command(`cat > ca-csr.json <<EOF
+		{
+		  "CN": "Kubernetes",
+		  "key": {
+			"algo": "rsa",
+			"size": 2048
+		  },
+		  "names": [
+			{
+			  "C": "US",
+			  "L": "%s",
+			  "O": "%s",
+			  "OU": "%s",
+			  "ST": "%s"
+			}
+		  ]
+		}
+		EOF`, kubeconfig.CA.ORG, kubeConf.CA.Location, kubeConf.CA.ORG, kubeConf.CA.OU, kubeConf.CA.ST)
 
-    //var c []Page
-    //var jsontype Kubecertconfig
-    //json.Unmarshal(file, &jsontype)
-    // fmt.Printf("Results: %v\n", jsontype)
-    var f interface{}
-    err := json.Unmarshal(file, $f)
-
-    fmt.Printf("Results: %v\n", f)
 }
