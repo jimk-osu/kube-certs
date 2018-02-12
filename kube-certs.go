@@ -14,8 +14,10 @@ import (
 	//"github.com/cloudflare/cfssl/cmd/cfssl/cfssl"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os/exec"
 	//"errors"
+	"io"
 	"io/ioutil"
 	"os"
 )
@@ -62,7 +64,41 @@ func readKubeCertJson() {
 	fmt.Printf("Results: %v\n", kubeconfig)
 
 	// Get Variable assingment working
-	cmd = exec.Command(`cat > ca-csr.json <<EOF
+	cmd := exec.Command("cat")
+	stdin, err := cmd.StdinPipe()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		// This is broke
+		// Create string function to return proper string with verbs assigned
+		var caStr = fmt.Sprintf(`
+		{
+			"CN": "Kubernetes",
+			"key": {
+			"algo": "rsa",
+			"size": 2048
+			},
+			"names": [
+			{
+				"C": "US",
+				"L": "%s",
+				"O": "%s",
+				"OU": "%s",
+				"ST": "%s"
+			}
+			]
+		}
+		EOF`, kubeconfig.CA.ORG, kubeconfig.CA.Location, kubeconfig.CA.ORG, kubeconfig.CA.OU, kubeconfig.CA.ST)
+
+		defer stdin.Close()
+		io.WriteString()
+	}()
+
+	/*
+		cmd = exec.Command("cat",  `> ca-csr.json <<EOF
 		{
 		  "CN": "Kubernetes",
 		  "key": {
@@ -72,13 +108,15 @@ func readKubeCertJson() {
 		  "names": [
 			{
 			  "C": "US",
-			  "L": "%s",
-			  "O": "%s",
-			  "OU": "%s",
-			  "ST": "%s"
+			  "L": "`+"%s"+`",
+			  "O": "`+"%s"+`",
+			  "OU": "`+"%s"+`",
+			  "ST": "`+"%s"+`
 			}
 		  ]
 		}
-		EOF`, kubeconfig.CA.ORG, kubeConf.CA.Location, kubeConf.CA.ORG, kubeConf.CA.OU, kubeConf.CA.ST)
+		EOF`, kubeconfig.CA.ORG, kubeconfig.CA.Location, kubeconfig.CA.ORG, kubeconfig.CA.OU, kubeconfig.CA.ST)
+
+	*/
 
 }
