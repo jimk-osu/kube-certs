@@ -59,10 +59,12 @@ func main() {
 	json.Unmarshal(file, &kubeconfig)
 	//fmt.Printf("Results: %v\n", kubeconfig)
 
-	// createCaCSR(kubeconfig)
-	// genCA()
-	// genAdmin(kubeconfig)
+	createCaCSR(kubeconfig)
+	genCA()
+	genAdmin(kubeconfig)
 	genWorkers(kubeconfig)
+	genKubeProxy(kubeconfig)
+	genApiServer(kubeconfig)
 }
 
 func createCaCSR(kubeconfig KubeConfig) {
@@ -204,9 +206,221 @@ func genWorkers(kubeconfig KubeConfig) {
 	workerCount := len(kubeconfig.Node.Workers)
 	fmt.Printf("Writing %d worker certs\n", workerCount)
 
-	for j := 0; j <= workerCount; j++ {
-		println("%s", kubeconfig.Node.Workers[:j])
+	for j := 0; j < workerCount; j++ {
+		// var worker  = kubeconfig.Node.Workers[j]
+		var instance string
+		fmt.Printf("%d\n", j)
+		fmt.Printf("External IP:%s\n", kubeconfig.Node.Workers[j].InternalIP)
+		if string(kubeconfig.Node.Workers[j].ExternalIP) == "" {
+			instance = kubeconfig.Node.Workers[j].InternalIP
+		} else {
+			instance = kubeconfig.Node.Workers[j].ExternalIP
+		}
+
+		// Get Variable assingment working
+		cmd := exec.Command("cat")
+		stdin, err := cmd.StdinPipe()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		go func() {
+			var caStr = fmt.Sprintf(`
+		{
+			"CN": "system:node:%s",
+			"key": {
+				"algo": "rsa",
+				"size": 2048
+			},
+			"names": [
+				{
+				"C": "US",
+				"L": "%s",
+				"O": "system:nodes",
+				"OU": "%s",
+				"ST": "%s"
+				}
+			]
+			}`, instance, kubeconfig.CA.Location, kubeconfig.CA.OU, kubeconfig.CA.ST)
+			defer stdin.Close()
+			io.WriteString(stdin, caStr)
+		}()
+
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("%s\n", out)
+
+		var workerJsonLocation = "templateFiles/" + instance + "-csr.json"
+
+		errWF := ioutil.WriteFile(workerJsonLocation, out, 0644)
+		check(errWF)
+
+		//Add check for optional if exists
+		var hostname = "-hostname=" + kubeconfig.Node.Workers[j].InternalIP + "," + kubeconfig.Node.Workers[j].Hostname
+
+		cfssl := exec.Command("cfssl", "gencert", "-ca=ca.pem", "-ca-key=ca-key.pem", "-config=templateFiles/ca-conf.json", hostname, "-profile=kubernetes", "templateFiles/"+kubeconfig.Node.Workers[j].InternalIP+"-csr.json")
+
+		cfssljson := exec.Command("cfssljson", "-bare", kubeconfig.Node.Workers[j].InternalIP)
+
+		reader, writer := io.Pipe()
+		var buf bytes.Buffer
+
+		cfssl.Stdout = writer
+		cfssljson.Stdin = reader
+
+		cfssljson.Stdout = &buf
+
+		cfssl.Start()
+		cfssljson.Start()
+
+		cfssl.Wait()
+		writer.Close()
+
+		cfssljson.Wait()
+		reader.Close()
+
+		io.Copy(os.Stdout, &buf)
 	}
+
+}
+
+func genKubeProxy(kubeconfig KubeConfig) {
+
+	// Get Variable assingment working
+	cmd := exec.Command("cat")
+	stdin, err := cmd.StdinPipe()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		var caStr = fmt.Sprintf(`
+	{
+		"CN": "system:kube-proxy",
+		"key": {
+			"algo": "rsa",
+			"size": 2048
+		},
+		"names": [
+			{
+			"C": "US",
+			"L": "%s",
+			"O": "system:node-proxier",
+			"OU": "%s",
+			"ST": "%s"
+			}
+		]
+		}`, kubeconfig.CA.Location, kubeconfig.CA.OU, kubeconfig.CA.ST)
+		defer stdin.Close()
+		io.WriteString(stdin, caStr)
+	}()
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%s\n", out)
+
+	errWF := ioutil.WriteFile("templateFiles/kube-proxy-csr.json", out, 0644)
+	check(errWF)
+
+	cfssl := exec.Command("cfssl", "gencert", "-ca=ca.pem", "-ca-key=ca-key.pem", "-config=templateFiles/ca-conf.json", "-profile=kubernetes", "templateFiles/kube-proxy-csr.json")
+
+	cfssljson := exec.Command("cfssljson", "-bare", "kube-proxy")
+
+	reader, writer := io.Pipe()
+	var buf bytes.Buffer
+
+	cfssl.Stdout = writer
+	cfssljson.Stdin = reader
+
+	cfssljson.Stdout = &buf
+
+	cfssl.Start()
+	cfssljson.Start()
+
+	cfssl.Wait()
+	writer.Close()
+
+	cfssljson.Wait()
+	reader.Close()
+
+	io.Copy(os.Stdout, &buf)
+
+}
+
+func genApiServer(kubeconfig KubeConfig) {
+
+	// Get Variable assingment working
+	cmd := exec.Command("cat")
+	stdin, err := cmd.StdinPipe()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		var caStr = fmt.Sprintf(`
+	{
+		"CN": "kubernetes",
+		"key": {
+			"algo": "rsa",
+			"size": 2048
+		},
+		"names": [
+			{
+			"C": "US",
+			"L": "%s",
+			"O": "%s",
+			"OU": "%s",
+			"ST": "%s"
+			}
+		]
+		}`, kubeconfig.CA.Location, kubeconfig.CA.ORG, kubeconfig.CA.OU, kubeconfig.CA.ST)
+		defer stdin.Close()
+		io.WriteString(stdin, caStr)
+	}()
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%s\n", out)
+
+	errWF := ioutil.WriteFile("templateFiles/kubernetes-csr.json", out, 0644)
+	check(errWF)
+
+	var hostname = "-hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12," + kubeconfig.Node.KubeApiAddr + ",127.0.0.1,kubernetes.default"
+
+	cfssl := exec.Command("cfssl", "gencert", "-ca=ca.pem", "-ca-key=ca-key.pem", "-config=templateFiles/ca-conf.json", hostname, "-profile=kubernetes", "templateFiles/kubernetes-csr.json")
+
+	cfssljson := exec.Command("cfssljson", "-bare", "kubernetes")
+
+	reader, writer := io.Pipe()
+	var buf bytes.Buffer
+
+	cfssl.Stdout = writer
+	cfssljson.Stdin = reader
+
+	cfssljson.Stdout = &buf
+
+	cfssl.Start()
+	cfssljson.Start()
+
+	cfssl.Wait()
+	writer.Close()
+
+	cfssljson.Wait()
+	reader.Close()
+
+	io.Copy(os.Stdout, &buf)
 
 }
 
