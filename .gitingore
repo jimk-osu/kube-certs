@@ -1,0 +1,5 @@
+*.pem
+*.csr
+templateFiles/*
+test.go
+kube-certs.sh
