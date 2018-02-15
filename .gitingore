@@ -1,5 +1,6 @@
 *.pem
 *.csr
 templateFiles/*
+!templateFiles/ca-conf.json
 test.go
 kube-certs.sh
