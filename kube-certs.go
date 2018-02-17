@@ -430,6 +430,7 @@ func check(e error) {
 	}
 }
 
+//Test integrating function for friendlier OOP
 func captureStdout(f func()) string {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
